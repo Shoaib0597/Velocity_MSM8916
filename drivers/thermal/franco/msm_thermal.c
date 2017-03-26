@@ -223,14 +223,14 @@ static struct thermal_info {
 	bool pending_change;
 	u64 limit_cpu_time;
 } info = {
-	.cpuinfo_max_freq = LONG_MAX,
-	.limited_max_freq = LONG_MAX,
+	.cpuinfo_max_freq = UINT_MAX,
+	.limited_max_freq = UINT_MAX,
 	.safe_diff = 5,
 	.throttling = false,
 	.pending_change = false,
 };
 
-static struct msm_thermal_data msm_thermal_info;
+struct msm_thermal_data msm_thermal_info;
 
 static struct delayed_work check_temp_work;
 
@@ -383,4 +383,3 @@ void __exit msm_thermal_device_exit(void)
 
 late_initcall(msm_thermal_device_init);
 module_exit(msm_thermal_device_exit);
-
