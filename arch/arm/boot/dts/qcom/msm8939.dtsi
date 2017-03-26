@@ -371,10 +371,12 @@
 		interrupts = <1 7 0xff00>;
 	};
 
+	#ifndef CONFIG_FRANCO_THERMAL
 	qcom,msm-thermal {
 		qcom,core-control-mask = <0xFF>;
 		qcom,freq-mitigation-control-mask = <0xFF>;
 	};
+	#endif
 
 	jtag_fuse: jtagfuse@5e01c {
 		compatible = "qcom,jtag-fuse";
