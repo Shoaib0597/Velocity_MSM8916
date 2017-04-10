@@ -138,6 +138,15 @@ config FRANCO_THERMAL
 
 endchoice
 
+config CORE_CONTROL
+       bool "Shoaib's Core Control, a Thermal HotPlug."
+       depends on FRANCO_THERMAL
+       default y
+       help
+	    A Thermal Based Automatic HotPlug Driver capable of disabling 
+            the whole big Cluster for better Heat management, 
+	    built by Shoaib0597 a.k.a. Shoaib0597.
+
 config SUPPLY_LM_MONITOR
 	bool "SUPPLY current monitor driver"
 	depends on THERMAL && PM_OPP && CPU_FREQ
