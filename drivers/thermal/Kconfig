@@ -134,7 +134,7 @@ config FRANCO_THERMAL
        depends on THERMAL_TSENS8960 || THERMAL_TSENS8974
        depends on CPU_FREQ || CPU_FREQ_MSM
        help
-	   This enables thermal monitoring capability in the kernel in the absence of a system wide thermal monitoring entity or until such an entity starts running in the userspace. Monitors TSENS temperature and limits the max frequency of the cores based on 4 thresholds of temperature.
+	   This enables thermal monitoring capability in the kernel in the absence of a system wide thermal monitoring entity or until such an entity starts running in the userspace. Monitors TSENS temperature and limits the max frequency of the cores based on 2 thresholds of temperature.
 
 endchoice
 
