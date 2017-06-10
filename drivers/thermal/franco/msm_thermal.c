@@ -12,7 +12,8 @@
  * 6. Added a function to allow users to configure whether Core 0 should be disabled or not.
  * 7. Added a check to make sure that Frequency Input from the user is only taken when Permission to Disable Core has not been granted even once (for big.LITTLE SoC) to prevent freezes.
  * 8. Introduced Shoaib's Core Control, an Automatic HotPlug based on Temperature.
- * 9. Altered the Formatting of the Codes (looks cleaner and more beautiful now).
+ * 9. Updated Shoaib's Core Control to v2.0 with Improvements and BUG-Fixes as well as Support for Hexa-Core big.LITTLE SoCs.
+ * 10. Altered the Formatting of the Codes (looks cleaner and more beautiful now).
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -46,11 +47,18 @@
 int TEMP_THRESHOLD 	= _temp_threshold;
 int TEMP_STEP 		= _temp_step;
 int LEVEL_HOT 		= _temp_threshold + _temp_step;
-int FREQ_HOT 		= 800000;
-#if (NR_CPUS == 8)
-int FREQ_WARM 		= 1113600;
-#else
-int FREQ_WARM 		= 1094400;
+
+#if (NR_CPUS == 4)
+    int FREQ_HOT		= 800000;
+    int FREQ_WARM		= 1094400;
+#elif (NR_CPUS == 6 || NR_CPUS == 8)
+      #ifdef CONFIG_ARCH_MSM8916
+	     int FREQ_HOT 	= 800000;
+             int FREQ_WARM 	= 1113600;
+      #else
+	   int FREQ_HOT 	= 864000;
+	   int FREQ_WARM 	= 1248000;
+      #endif
 #endif
 
 #ifdef CONFIG_CORE_CONTROL
@@ -63,7 +71,7 @@ static struct kobject *cc_kobj;
 extern int AiO_HotPlug;
 #endif
 
-#if (NR_CPUS == 8)	// Assume Octa-Core SoCs to be based on big.LITTLE architecture.
+#if (NR_CPUS == 6 || NR_CPUS == 8)	// Assume Hexa/Octa-Core SoCs to be based on big.LITTLE architecture.
 // Permission to Disable Core 0 Toggle.
 extern bool hotplug_boost;
 #endif
@@ -223,6 +231,7 @@ static void __ref check_temp(struct work_struct *work)
 	tsens_dev.sensor_num = msm_thermal_info.sensor_id;
 	tsens_get_temp(&tsens_dev, &temp);
 
+	#if (NR_CPUS == 6 || NR_CPUS == 8)
 	// Switch on Core 0 again as soon as Permission to disable it is denied.
 	if (!cpu_online(0))
 	{
@@ -230,79 +239,16 @@ static void __ref check_temp(struct work_struct *work)
 	   if (hotplug_boost == false)
 	      cpu_up(0);
 	}
+	#endif
 
 	#ifdef CONFIG_CORE_CONTROL
 	// Begin HotPlug Mechanism for Shoaib's Core Control
 	if (core_control)
 	{
-	   // If SoC is an Octa-Core one, assume it to be based on big.LITTLE.
-	   if (NR_CPUS == 8)
-	   {
-	      if (temp > 80)
-	      {
-	         if (cpu_online(3))
-	      	    cpu_down(3);
-	         if (cpu_online(2))
-	            cpu_down(2);
-	         if (cpu_online(1))
-	            cpu_down(1);
-		 // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
-	         if (hotplug_boost == true && flag == 0)
-		 {
-	            if (cpu_online(0))
-	               cpu_down(0);
-		 }
-	         if (cpu_online(7))
-	            cpu_down(7);
-	         if (cpu_online(6))
-	            cpu_down(6); 
-	      }
-	      else if (temp > 55 && temp <= 65)
-	      {
-		      if (!cpu_online(6))
-		         cpu_up(6);
-	              if (!cpu_online(7))
-	 	         cpu_up(7);
-
-	              if (cpu_online(3))
-	      	         cpu_down(3);
-	              if (cpu_online(2))
-	                 cpu_down(2);
-		      if (cpu_online(1))
-	                 cpu_down(1);
-		      // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
-		      if (hotplug_boost == true && flag == 0)
-		      {
-	              if (cpu_online(0))
-	                 cpu_down(0);
-		      }
-		      
-	      }
-	      else if (temp > 45 && temp <= 50)
-	      {
-		      if (!cpu_online(0))
-	                 cpu_up(0);
-	              if (!cpu_online(1))
-	                 cpu_up(1);
-	          
-	              if (cpu_online(3))
-	                 cpu_down(3);
-	              if (cpu_online(2))
-	                 cpu_down(2);
-	      }
-	      else if (temp == 40)
-	      {
-	              int cpu;
-	              for_each_possible_cpu(cpu)
-	                  if (!cpu_online(cpu))
-		             cpu_up(cpu);
-	      }
-	   }
-	   // If SoC is a Quad-Core one, assume it to be of Traditional Configuration.
-	   else if (NR_CPUS == 4)
-	   {
-	           if (temp > 80)
-	           {
+	   // Assume Quad-Core SoCs to be of Traditional Configuration.
+	   #if (NR_CPUS == 4)
+	       if (temp > 80)
+	       {
 	           if (cpu_online(3))
 	      	      cpu_down(3);
 	           if (cpu_online(2))
@@ -335,7 +281,117 @@ static void __ref check_temp(struct work_struct *work)
 	                       if (!cpu_online(cpu))
 		                  cpu_up(cpu);
 	           }
-	   }
+	   // Assume Hexa-Core SoCs to be of big.LITTLE Configuration.
+	   #elif (NR_CPUS == 6)
+	         if (temp > 80)
+	         {
+		    if (!cpu_online(2))
+	               cpu_up(2);
+	            if (!cpu_online(3))
+	               cpu_up(3);
+
+	            if (cpu_online(1))
+	               cpu_down(1);
+	            // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
+	            if (hotplug_boost == true && flag == 0)
+		    {
+	               if (cpu_online(0))
+	                  cpu_down(0);
+		    }
+		    if (cpu_online(5))
+	               cpu_down(5);
+	            if (cpu_online(4))
+	               cpu_down(4);
+	         }
+		 else if (temp > 55 && temp <= 65)
+		 {
+		      if (!cpu_online(2))
+	                 cpu_up(2);
+	              if (!cpu_online(3))
+	                 cpu_up(3);
+		      if (!cpu_online(4))
+	                 cpu_up(4);
+	              if (!cpu_online(5))
+	                 cpu_up(5);
+		      
+		      if (cpu_online(1))
+	                 cpu_down(1);
+	              // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
+	              if (hotplug_boost == true && flag == 0)
+		      {
+	                 if (cpu_online(0))
+	                    cpu_down(0);
+		      }
+	          }
+		  else if (temp == 50)
+		  {
+		          int cpu;
+	                  for_each_possible_cpu(cpu)
+	                      if (!cpu_online(cpu))
+		                 cpu_up(cpu);
+	          }
+	   // Assume Octa-Core SoCs to be of big.LITTLE Configuration.
+	   #elif (NR_CPUS == 8)
+	         if (temp > 80)
+	         {
+	            if (cpu_online(3))
+	      	       cpu_down(3);
+	            if (cpu_online(2))
+	               cpu_down(2);
+	            if (cpu_online(1))
+	               cpu_down(1);
+		    // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
+	            if (hotplug_boost == true && flag == 0)
+		    {
+	               if (cpu_online(0))
+	                  cpu_down(0);
+		    }
+	            if (cpu_online(7))
+	               cpu_down(7);
+	            if (cpu_online(6))
+	               cpu_down(6); 
+	         }
+	         else if (temp > 55 && temp <= 65)
+	         {
+		         if (!cpu_online(6))
+		            cpu_up(6);
+	                 if (!cpu_online(7))
+	 	            cpu_up(7);
+
+	                 if (cpu_online(3))
+	      	            cpu_down(3);
+	                 if (cpu_online(2))
+	                    cpu_down(2);
+		         if (cpu_online(1))
+	                    cpu_down(1);
+		         // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
+		         if (hotplug_boost == true && flag == 0)
+		         {
+	                 if (cpu_online(0))
+	                    cpu_down(0);
+		         }
+		      
+	         }
+	         else if (temp > 45 && temp <= 50)
+	         {
+		         if (!cpu_online(0))
+	                    cpu_up(0);
+	                 if (!cpu_online(1))
+	                    cpu_up(1);
+	          
+	                 if (cpu_online(3))
+	                    cpu_down(3);
+	                 if (cpu_online(2))
+	                    cpu_down(2);
+	         }
+	         else if (temp == 40)
+	         {
+	                 int cpu;
+	                 for_each_possible_cpu(cpu)
+	                     if (!cpu_online(cpu))
+		                cpu_up(cpu);
+	         }  
+           #endif   
         }
 	// End HotPlug Mechanism for Shoaib's Core Control
 	#endif
