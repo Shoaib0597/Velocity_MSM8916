@@ -31,6 +31,11 @@
 #include <linux/qpnp/power-on.h>
 #include "yl_pm8916_vbus.h"
 
+#ifdef CONFIG_QUICK_CHARGE
+// Include the Header File of Quick Charge for Access to the Status and Dynamic Current of the Driver as well as for Reporting the Battery-Level to the Driver.
+#include <linux/Quick_Charge.h>
+#endif
+
 struct bq24157_chip {
 	struct device         *dev;
 	struct i2c_client      *client;
@@ -1207,6 +1212,11 @@ static int bq24157_get_prop_batt_capa(struct bq24157_chip *chip)
                 chip->batt_capa = 88;
         }
 
+	#ifdef CONFIG_QUICK_CHARGE
+	// Report the Battery-Level to the Quick Charge Driver.
+	batt_level (chip->batt_capa);
+	#endif
+
         return chip->batt_capa;
 }
 
@@ -1351,7 +1361,8 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 		dev_err(chip->dev,
 			"could not read USB current_max property, rc=%d\n", rc);
 	else
-		chip->set_ivbus_max = prop.intval / 1000;
+           chip->set_ivbus_max = prop.intval / 1000;
+
 
 
 	rc = bq24157_set_ivbus_max(chip, chip->set_ivbus_max); //VBUS CURRENT
@@ -1440,9 +1451,23 @@ static int bq24157_parse_dt(struct bq24157_chip *chip)
 	if (rc < 0)
 		return -EINVAL;
 
+#ifdef CONFIG_QUICK_CHARGE
+	// If Quick Charge is Enabled, then Set the Max. Current to the Value of Dynamic Current of the Driver.
+	if (QC_Toggle == 1)
+	   chip->chg_curr_max = Dynamic_Current;
+	else
+	{
+	// If Quick Charge is Disabled, then Restore the Max. Current Value to the Default as Specified in DTB.
+	    rc = of_property_read_u32(node, "yl,max-charge-current-mA", &chip->chg_curr_max);
+	    if (rc < 0)
+	       return -EINVAL;
+	}
+#else
+	// If Quick Charge is not Compiled, then Read the Default Value only.
 	rc = of_property_read_u32(node, "yl,max-charge-current-mA", &chip->chg_curr_max);
 	if (rc < 0)
-		return -EINVAL;
+	   return -EINVAL;
+#endif
 	chip->chg_curr_now = chip->chg_curr_max;
 
 	rc = of_property_read_u32(node, "yl,term-current-mA", &chip->iterm_ma);
