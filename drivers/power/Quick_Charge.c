@@ -21,17 +21,41 @@
 #define QUICK_CHARGE		"Quick_Charge"
 #define CURRENT			1250
 
+// Enable/Disable Toggle.
 int QC_Toggle = ENABLED;
+// Variable to Store Different Values of Current (mA).
 int Dynamic_Current = CURRENT;
+// Variable to Know the Status of Charging (i.e., Charger Connected or Dis-Connected).
+int Charge_Status;
+// Variable to Store Actual Current (mA) Drawn from AC or USB Charger.
+unsigned int Actual_Current;
 
+// Function to Read the Status (%) of Battery.
 void batt_level (int Battery_Status)
 {
+	// Mechanism of Driver to Allocate Current (mA).
 	if (Battery_Status >= 0 && Battery_Status <= 60)
 	   Dynamic_Current = 1500;
 	else if (Battery_Status >= 61 && Battery_Status <= 90)
 		Dynamic_Current = 1250;
 	else if (Battery_Status >= 91 && Battery_Status <= 100)
   	        Dynamic_Current = 1000;
+}
+
+// Function to Read the Status (Charger Connected or Dis-Connected) of Charging.
+void charging (int flag)
+{
+	Charge_Status = flag;
+}
+
+// Function to Read the Actual Current (mA) Reported by the Charging ICs.
+void actual_current (int Value)
+{
+	// Store Actual Current (mA) only when Battery is being Charged.
+	if (Charge_Status == 1)
+	   Actual_Current = Value;
+        else
+	    Actual_Current = 0;
 }
 
 static ssize_t qc_toggle_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
@@ -46,8 +70,10 @@ static ssize_t qc_toggle_store(struct kobject *kobj, struct kobj_attribute *attr
 	switch (val)
 	{
 	case 0:
+	       QC_Toggle = val;
+	break;
 	case 1:
-		QC_Toggle = val;
+	       QC_Toggle = val;
 	break;
 	default:
 		pr_info("%s: Invalid Value", QUICK_CHARGE);
@@ -56,9 +82,9 @@ static ssize_t qc_toggle_store(struct kobject *kobj, struct kobj_attribute *attr
 return count;
 }
 
-static ssize_t dynamic_current_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+static ssize_t actual_current_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d", Dynamic_Current);
+	return sprintf(buf, "%u", Actual_Current);
 }
 
 static struct kobj_attribute qc_toggle_attribute =
@@ -67,16 +93,16 @@ static struct kobj_attribute qc_toggle_attribute =
 		qc_toggle_show,
 		qc_toggle_store);
 
-static struct kobj_attribute dynamic_current_attribute =
-	__ATTR(Dynamic_Current,
+static struct kobj_attribute actual_current_attribute =
+	__ATTR(Actual_Current,
 		0444,
-		dynamic_current_show, 
+		actual_current_show, 
 		NULL);
 
 static struct attribute *charger_control_attrs[] =
 	{
 		&qc_toggle_attribute.attr,
-		&dynamic_current_attribute.attr,
+		&actual_current_attribute.attr,
 		NULL,
 	};
 	
