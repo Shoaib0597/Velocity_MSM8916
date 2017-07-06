@@ -1361,9 +1361,36 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 		dev_err(chip->dev,
 			"could not read USB current_max property, rc=%d\n", rc);
 	else
-           chip->set_ivbus_max = prop.intval / 1000;
-
-
+        #ifdef CONFIG_QUICK_CHARGE
+        {
+           if (!((prop.intval / 1000) == 0))
+           {
+	      if (QC_Toggle == 1) 
+	      {
+		 // If Current (mA) is Equal to 500 mA, then USB is Connected.
+                 if ((prop.intval / 1000) == 500) 
+		 {
+		    // Raise USB-Charging Current (mA) to 1000 mA (Maximum Supported).
+                    pr_info("Using Custom USB Current (mA) %d", 1000);
+                    chip->set_ivbus_max = 1000;
+                 }
+                 else 
+	         {
+                     pr_info("Using Quick Charge Current (mA) %d", Dynamic_Current);
+                     chip->set_ivbus_max = Dynamic_Current;
+                 }
+              }
+              else 
+		  // If Quick Charge is Disabled, Restore Default Value of Current (mA).
+                  chip->set_ivbus_max = prop.intval / 1000;
+           }
+	   else
+	       chip->set_ivbus_max = 0;
+	}
+	#else
+	    // If Quick Charge is Not Compiled, Leave Current (mA) Value Untouched.
+	    chip->set_ivbus_max = prop.intval / 1000;
+	#endif
 
 	rc = bq24157_set_ivbus_max(chip, chip->set_ivbus_max); //VBUS CURRENT
         /*modify by sunxiaogang@yulong.com 2015.03.10 distinguish to fan5405*/
