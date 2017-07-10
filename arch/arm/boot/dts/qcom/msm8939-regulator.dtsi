@@ -153,10 +153,10 @@
 					<28 1708800000>;
 		qcom,speed-bin-fuse-sel = <1 34 3 0>;
 		qcom,cpr-speed-bin-max-corners =
-					<0 0 3 14 21>,
-					<2 0 3 14 21>,
-					<2 2 3 14 20>,
-					<4 0 3 14 28>,
+					<0 0 3 14 24>,
+					<2 0 3 14 24>,
+					<2 2 3 14 24>,
+					<4 0 3 14 26>,
 					<5 0 3 14 26>,
 					<5 6 3 14 26>;
 		qcom,cpr-quot-adjust-scaling-factor-max = <900>;
