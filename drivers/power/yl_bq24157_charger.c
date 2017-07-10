@@ -1387,29 +1387,56 @@ static void bq24157_external_power_changed(struct power_supply *psy)
            {
 	      if (QC_Toggle == 1) 
 	      {
-		 // If Current (mA) is Equal to 500 mA, then USB is Connected.
+	         // If Current (mA) is Equal to 500 mA, then USB-Charger is Connected.
                  if ((prop.intval / 1000) == 500) 
-		 {
-		    // Raise USB-Charging Current (mA) to 1000 mA (Maximum Supported).
-                    pr_info("Using Custom USB Current (mA) %d", 1000);
+	         {
+	            // Set vBUS Current-Limit (mA) to 1000 mA.
+                    pr_info("Using Quick Charge USB-Current (mA) %d", 1000);
                     chip->set_ivbus_max = 1000;
-                 }
+		    // Store USB-Current (mA) Value Correctly.
+		    chip->chg_curr_max = chip->set_ivbus_max;
+		    chip->chg_curr_now = chip->chg_curr_max;
+	         }
                  else 
 	         {
-                     pr_info("Using Quick Charge Current (mA) %d", Dynamic_Current);
+		     // If Flow of Control comes here, then AC-Charger is Connected.
+                     pr_info("Using Quick Charge AC-Current (mA) %d", Dynamic_Current);
+		     // Set vBUS Current-Limit (mA) Equal to Dynamic Current (mA).
                      chip->set_ivbus_max = Dynamic_Current;
+		     // Store AC-Current (mA) Value Correctly.
+		     chip->chg_curr_max = chip->set_ivbus_max;
+		     chip->chg_curr_now = chip->chg_curr_max;
                  }
               }
-              else 
-		  // If Quick Charge is Disabled, Restore Default Value of Current (mA).
-                  chip->set_ivbus_max = prop.intval / 1000;
+              else
+	      {
+		  // If Quick Charge is Disabled, Restore Default Value of Current (mA). 
+		  if ((prop.intval / 1000) == 500)
+		  {  
+		     // If USB-Charger is Connected, Restore Default Value of Current (mA). 
+                     pr_info("Using Default USB-Current (mA) %d", prop.intval / 1000);
+		     chip->set_ivbus_max = prop.intval / 1000;
+		     chip->chg_curr_max = chip->set_ivbus_max;
+		     chip->chg_curr_now = chip->chg_curr_max;
+		  }
+	 	  else
+		  {
+		      // If Flow of Control comes here, then AC-Charger is Connected.
+		      pr_info("Using Default AC-Current (mA) %d", 1000);
+		      // Set vBUS Current-Limit (mA) to Standard Value i.e., 1000 mA. 
+		      chip->set_ivbus_max = 1000;
+		      // Set Current (mA) to 1000 mA (as per DTB).    
+		      chip->chg_curr_max = chip->set_ivbus_max;
+		      chip->chg_curr_now = chip->chg_curr_max;
+		  }	  
+	      }
            }
 	   else
 	       chip->set_ivbus_max = 0;
-	}
+        }
 	#else
-	    // If Quick Charge is Not Compiled, Leave Current (mA) Value Untouched.
-	    chip->set_ivbus_max = prop.intval / 1000;
+	     // If Quick Charge is Not Compiled, Leave Current (mA) Value Untouched.
+	     chip->set_ivbus_max = prop.intval / 1000;
 	#endif
 
 	rc = bq24157_set_ivbus_max(chip, chip->set_ivbus_max); //VBUS CURRENT
