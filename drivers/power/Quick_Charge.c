@@ -19,27 +19,47 @@
 
 #define ENABLED			1
 #define QUICK_CHARGE		"Quick_Charge"
-#define CURRENT			1250
+#define AC_CURRENT		1000
 
 // Enable/Disable Toggle.
 int QC_Toggle = ENABLED;
 // Variable to Store Different Values of Current (mA).
-int Dynamic_Current = CURRENT;
+int Dynamic_Current = AC_CURRENT;
 // Variable to Know the Status of Charging (i.e., Charger Connected or Dis-Connected).
 int Charge_Status;
 // Variable to Store Actual Current (mA) Drawn from AC or USB Charger.
 unsigned int Actual_Current;
+// Variable to Store Selection of Charging-Profiles.
+int Charging_Profile = 0;
+// Variable to Store a Copy of Battery (%) Status.
+int Battery_Percent;
 
 // Function to Read the Status (%) of Battery.
 void batt_level (int Battery_Status)
 {
-	// Mechanism of Driver to Allocate Current (mA).
-	if (Battery_Status >= 0 && Battery_Status <= 60)
-	   Dynamic_Current = 1500;
-	else if (Battery_Status >= 61 && Battery_Status <= 90)
-		Dynamic_Current = 1250;
-	else if (Battery_Status >= 91 && Battery_Status <= 100)
-  	        Dynamic_Current = 1000;
+	Battery_Percent = Battery_Status;
+
+	// If "Safe" Profile is Selected, use Lower Current (mA) Values.
+	if (Charging_Profile == 0)
+	{
+	   // Mechanism of Driver to Allocate Current (mA).
+ 	   if (Battery_Percent >= 0 && Battery_Percent <= 60)
+	      Dynamic_Current = 1250;
+	   else if (Battery_Percent >= 61 && Battery_Percent <= 90)
+		   Dynamic_Current = 1125;
+	   else if (Battery_Percent >= 91 && Battery_Percent <= 100)
+  	           Dynamic_Current = 1000;
+	}
+	else
+	{
+	    // Mechanism of Driver to Allocate Current (mA).
+	    if (Battery_Percent >= 0 && Battery_Percent <= 60)
+	       Dynamic_Current = 1500;
+	    else if (Battery_Percent >= 61 && Battery_Percent <= 90)
+		    Dynamic_Current = 1250;
+	    else if (Battery_Percent >= 91 && Battery_Percent <= 100)
+  	            Dynamic_Current = 1000;
+	}
 }
 
 // Function to Read the Status (Charger Connected or Dis-Connected) of Charging.
@@ -87,6 +107,28 @@ static ssize_t actual_current_show(struct kobject *kobj, struct kobj_attribute *
 	return sprintf(buf, "%u", Actual_Current);
 }
 
+static ssize_t charging_profile_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d", Charging_Profile);
+}
+
+static ssize_t charging_profile_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int val;
+	
+	sscanf (buf, "%d", &val);
+	
+	if (val < 0 || val > 1)
+	   return EINVAL;
+
+	Charging_Profile = val;
+
+	// Call Battery (%) Status-Reader Function to Update Dynamic Current (mA) Value.	
+	batt_level (Battery_Percent);
+
+	return count;
+}
+
 static struct kobj_attribute qc_toggle_attribute =
 	__ATTR(QC_Toggle,
 		0666,
@@ -99,10 +141,17 @@ static struct kobj_attribute actual_current_attribute =
 		actual_current_show, 
 		NULL);
 
+static struct kobj_attribute charging_profile_attribute =
+	__ATTR(Charging_Profile,
+		0666,
+		charging_profile_show,
+		charging_profile_store);
+
 static struct attribute *charger_control_attrs[] =
 	{
 		&qc_toggle_attribute.attr,
 		&actual_current_attribute.attr,
+		&charging_profile_attribute.attr,
 		NULL,
 	};
 	
