@@ -17,7 +17,7 @@
 #include <linux/module.h>
 #include <linux/Quick_Charge.h>
 
-#define ENABLED			1
+#define ENABLED			0
 #define QUICK_CHARGE		"Quick_Charge"
 #define AC_CURRENT		1000
 
