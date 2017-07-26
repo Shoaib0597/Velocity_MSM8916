@@ -18,6 +18,6 @@ extern int Charging_Profile;
 extern void batt_level (int);
 extern void charging (int);
 extern void actual_current (int);
-
+extern void ic_vendor (int);
 		  
 #endif
