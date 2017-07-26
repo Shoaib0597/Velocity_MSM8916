@@ -34,6 +34,13 @@
 #ifdef CONFIG_QUICK_CHARGE
 // Include the Header File of Quick Charge for Access to the Status and Dynamic Current of the Driver as well as for Reporting the Battery-Level to the Driver.
 #include <linux/Quick_Charge.h>
+
+// Variable to identify the Type of Charging i.e., 0 for USB and 1 for AC. 
+static int Charging_Type;
+// Variable to Check when Quick Charge is Toggled On or Off.
+static int Toggle_Mirror = 0;
+// Variable to Check when Charging-Profile is Changed.
+static int CP_Mirror = 1;
 #endif
 
 struct bq24157_chip {
@@ -1181,6 +1188,10 @@ static bool batt_full_flag = false;
 
 static int bq24157_get_prop_batt_capa(struct bq24157_chip *chip)
 {
+	#ifdef CONFIG_QUICK_CHARGE
+	int rc;
+	#endif
+
         union power_supply_propval ret = {0,};
 
         if (chip->battery_psy != NULL) {
@@ -1233,8 +1244,41 @@ static int bq24157_get_prop_batt_capa(struct bq24157_chip *chip)
 
 	#ifdef CONFIG_QUICK_CHARGE
 	// Report the Battery-Level to the Quick Charge Driver (only if it is Enabled).
-	if (QC_Toggle == 1)
+	if (QC_Toggle == 1 || Toggle_Mirror != QC_Toggle || CP_Mirror != Charging_Profile)
+	{
 	   batt_level (chip->batt_capa);
+
+	   // Update Value of Current (mA) only when Battery is Being Charged.
+	   if (Charge_Status == 1)
+	   {
+	      if (chip->batt_capa == 60 || chip->batt_capa == 90 || Toggle_Mirror != QC_Toggle || CP_Mirror != Charging_Profile)
+	      {
+	         // If USB-Charging is Going On, Set Current-Limit to 1000 mA.
+	         if (Charging_Type == 0)
+	         {
+		    chip->set_ivbus_max = 1000;
+		    chip->chg_curr_max = chip->set_ivbus_max; 
+		    chip->chg_curr_now = chip->chg_curr_max;   
+
+		    // Update vBUS Current-Limit (mA).
+		    rc = bq24157_set_ivbus_max (chip, chip->set_ivbus_max);
+	         }
+	         else
+	         {
+	             // If Flow of Controls comes here, then AC-Charging is Going On.
+		     chip->set_ivbus_max = Dynamic_Current;
+		     chip->chg_curr_max = chip->set_ivbus_max;
+		     chip->chg_curr_now = chip->chg_curr_max; 
+
+		     // Update vBUS Current-Limit (mA).
+		     rc = bq24157_set_ivbus_max (chip, chip->set_ivbus_max);   
+	         }
+		 // Store New Value of Variables in Mirrors.
+		 Toggle_Mirror = QC_Toggle;
+		 CP_Mirror = Charging_Profile;
+	      }
+	   }
+	}
 	#endif
 
         return chip->batt_capa;
@@ -1396,6 +1440,8 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 		    // Store USB-Current (mA) Value Correctly.
 		    chip->chg_curr_max = chip->set_ivbus_max;
 		    chip->chg_curr_now = chip->chg_curr_max;
+		    // Store Charging-Type i.e., 0 for USB.
+	   	    Charging_Type = 0;
 	         }
                  else 
 	         {
@@ -1406,6 +1452,8 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 		     // Store AC-Current (mA) Value Correctly.
 		     chip->chg_curr_max = chip->set_ivbus_max;
 		     chip->chg_curr_now = chip->chg_curr_max;
+		     // Store Charging-Type i.e., 1 for AC.
+	   	     Charging_Type = 1;
                  }
               }
               else
@@ -1418,6 +1466,8 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 		     chip->set_ivbus_max = prop.intval / 1000;
 		     chip->chg_curr_max = chip->set_ivbus_max;
 		     chip->chg_curr_now = chip->chg_curr_max;
+		     // Store Charging-Type i.e., 0 for USB.
+	   	     Charging_Type = 0;
 		  }
 	 	  else
 		  {
@@ -1428,9 +1478,11 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 		      // Set Current (mA) to 1000 mA (as per DTB).    
 		      chip->chg_curr_max = chip->set_ivbus_max;
 		      chip->chg_curr_now = chip->chg_curr_max;
+	  	      // Store Charging-Type i.e., 1 for AC.
+	   	      Charging_Type = 1;
 		  }	  
 	      }
-           }
+	   }
 	   else
 	       chip->set_ivbus_max = 0;
         }
