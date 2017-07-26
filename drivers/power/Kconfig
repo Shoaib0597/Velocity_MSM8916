@@ -601,6 +601,22 @@ config YL_FAN5405_CHARGER
 	help
 	  Say Y here to enable the fan5405 sm charge driver
 
+config QUICK_CHARGE
+       bool "Enable Quick Charge v1.0, developed by Shoaib0597."
+       depends on YL_BQ24157_CHARGER || YL_FAN5405_CHARGER
+       default y
+       help
+         This Fast-Charge Driver improves upon the ThunderCharge Current Control
+	 Driver. In ThunderCharge, a Constant Current (mA) is Forced at all times
+	 irrespective of the Battery State. This has Two Drawbacks. Firstly, the 
+	 Battery may get Damaged and secondly, users aren't able to Use Higher
+	 Current (mA) due to the Fear of Damage to Hardware. Now, this Quick Charge
+	 Driver fixes these issues. In this Driver, the Battery is Charged from 0%
+	 to 60% on Max. Current (mA), then from 61% to 90% on a Medium Current
+	 (mA) and finally from 91% to 100% on the Standard Current (mA) i.e.,
+	 1A. This Driver is Based on the Idea of Qualcomm's Quick Charge Technology
+	 and is Developed by Shoaib Anwar a.k.a. Shoaib0597.
+
 config YL_LC709203_FUELGAUGE
 	tristate "Yulong LC709203 fuelgauge driver"
 	depends on I2C
