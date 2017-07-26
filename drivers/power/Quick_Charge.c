@@ -30,9 +30,32 @@ int Charge_Status;
 // Variable to Store Actual Current (mA) Drawn from AC or USB Charger.
 unsigned int Actual_Current;
 // Variable to Store Selection of Charging-Profiles.
-int Charging_Profile = 0;
+int Charging_Profile;
 // Variable to Store a Copy of Battery (%) Status.
 int Battery_Percent;
+// Variable to Store a Copy of IC-Vendor's ID-Code.
+int IC_Code;
+
+// Function to Read IC-Vendor's Name and Select Default Charging-Profile accordingly.
+void ic_vendor (int Name)
+{
+	if (Name == 0)
+	{
+	   // IC's Name is "FAN5405".
+	   IC_Code = Name;
+
+	   // Since IC is "FAN5405", Max. Charging-Current (mA) Limit is 1250 mA.
+	   Charging_Profile = 0;
+	}
+	else
+	{
+	    // IC's Name is "BQ24157".
+	    IC_Code = Name;
+
+	    // Since IC is "BQ24157", Max. Charging-Current (mA) Limit is 1500 mA.
+	    Charging_Profile = 1;
+	}
+}
 
 // Function to Read the Status (%) of Battery.
 void batt_level (int Battery_Status)
