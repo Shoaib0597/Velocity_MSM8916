@@ -14,6 +14,7 @@
 extern int QC_Toggle;
 extern int Dynamic_Current;
 extern int Charging_Profile;
+extern int Charge_Status;
 
 extern void batt_level (int);
 extern void charging (int);
