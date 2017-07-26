@@ -1706,7 +1706,14 @@ static int fan5405_probe(struct i2c_client *client, const struct i2c_device_id *
 	if(FAN5405_IC_VENDER != fan5405_get_ic_vender(chip)){
 		dev_err(&client->dev, "this IC is not FAN5405, exit fan5405 probe \n");
 		return -EINVAL;
-	}
+	} 
+	dev_err(&client->dev, "This IC is FAN5405,  probe \n");
+
+	#ifdef CONFIG_QUICK_CHARGE
+	// IC is "FAN5405". Report this to Quick Charge Driver.
+	ic_vendor (0);
+	#endif
+
 	/* 1. set charge safety register */
 	if (!chip->safe_curr)
 		chip->safe_curr = 1500;
