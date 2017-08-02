@@ -55,23 +55,6 @@ static struct workqueue_struct *AiO_wq;
 
 int AiO_HotPlug;
 
-#ifdef CONFIG_FRANCO_THERMAL
-#if (NR_CPUS == 6 || NR_CPUS == 8)
-// Variable required to know whether the Thermal Frequency Table has been altered by the user on a big.LITTLE SoC.
-extern int flag;
-#endif
-#endif
-
-#ifdef CONFIG_CORE_CONTROL
-// Variable required to know the status of Shoaib's Core Control.
-extern bool core_control;
-#endif
-
-#if (NR_CPUS == 6 || NR_CPUS == 8)
-// "Permission to Disable Core 0" Toggle.
-extern bool hotplug_boost;
-#endif
-
 static void __ref AiO_HotPlug_work(struct work_struct *work)
 {
          // Operations for a Traditional Quad-Core SoC.
@@ -296,12 +279,6 @@ static ssize_t store_toggle(struct kobject *kobj,
 	ret = sscanf(buf, "%u", &val);
 	if (ret != 1 || val < 0 || val > 1)
 	   return -EINVAL;
-	
-	#ifdef CONFIG_CORE_CONTROL
-	// Allow AiO HotPlug to be Enabled only when Shoaib's Core Control is Disabled.
-	if (core_control)
-	   return -EINVAL;
-	#endif
 
 	if (val == AiO.toggle)
 	   return count;
@@ -359,29 +336,16 @@ static ssize_t store_big_cores(struct kobject *kobj,
 
 	ret = sscanf(buf, "%u", &val);
 
-	#ifdef CONFIG_FRANCO_THERMAL
 	if (NR_CPUS == 6)
 	{
-	   if (ret != 1 || val < 0 || val > 2 || (val == 0 && (hotplug_boost == false || flag == 1 || AiO.LITTLE_cores == 0)))
+	   if (ret != 1 || val < 0 || val > 2 || (val == 0 && AiO.LITTLE_cores == 0))
 	      return -EINVAL;
 	}
 	else if (NR_CPUS == 8)
 	{
-	        if (ret != 1 || val < 0 || val > 4 || (val == 0 && (hotplug_boost == false || flag == 1 || AiO.LITTLE_cores == 0)))
+		if (ret != 1 || val < 0 || val > 4 || (val == 0 && AiO.LITTLE_cores == 0))
 	           return -EINVAL;
 	}
-	#else
-	if (NR_CPUS == 6)
-	{
-	   if (ret != 1 || val < 0 || val > 2 || (val == 0 && (hotplug_boost == false || AiO.LITTLE_cores == 0)))
-	      return -EINVAL;
-	}
-	else if (NR_CPUS == 8)
-	{
-		if (ret != 1 || val < 0 || val > 4 || (val == 0 && (hotplug_boost == false || AiO.LITTLE_cores == 0)))
-	           return -EINVAL;
-	}
-	#endif
 
 	AiO.big_cores = val;
 
