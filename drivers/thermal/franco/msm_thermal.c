@@ -14,6 +14,7 @@
  * 8. Introduced Shoaib's Core Control, an Automatic HotPlug based on Temperature.
  * 9. Updated Shoaib's Core Control to v2.0 with Improvements and BUG-Fixes as well as Support for Hexa-Core big.LITTLE SoCs.
  * 10. Altered the Formatting of the Codes (looks cleaner and more beautiful now).
+ * 11. Updated Shoaib's Core Control to v2.1 (AiO HotPlug's Dependency Removed).
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -65,10 +66,6 @@ int LEVEL_HOT 		= _temp_threshold + _temp_step;
 // Essentials for Shoaib's Core Control.
 bool core_control = true;
 static struct kobject *cc_kobj;
-#endif
-
-#ifdef CONFIG_AiO_HotPlug
-extern int AiO_HotPlug;
 #endif
 
 #if (NR_CPUS == 6 || NR_CPUS == 8)	// Assume Hexa/Octa-Core SoCs to be based on big.LITTLE architecture.
@@ -436,20 +433,11 @@ static ssize_t __ref store_cc_enabled(struct kobject *kobj, struct kobj_attribut
 	int val = 0;
 
 	ret = kstrtoint(buf, 10, &val);
-	#ifdef CONFIG_AiO_HotPlug
-	// Allow Shoaib's Core Control to be Enabled only if AiO HotPlug is Disabled.
-	if (ret || AiO_HotPlug == 1) 
-	{
-	   pr_err("Invalid input %s. err:%d\n", buf, ret);
-	   goto done_store_cc;
-	}
-	#else
 	if (ret)
 	{
 	   pr_err("Invalid input %s. err:%d\n", buf, ret);
 	   goto done_store_cc;
 	}
-	#endif
 	
 
 	if (core_control == !!val)
