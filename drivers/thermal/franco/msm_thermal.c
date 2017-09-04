@@ -17,6 +17,8 @@
  * 11. Updated Shoaib's Core Control to v2.1 (AiO HotPlug's Dependency Removed).
  * 12. Updated Shoaib's Core Control to v2.2 (All Checks Removed for Thermal Table). 
  * 13. Updated Shoaib's Core Control to v2.4 (Core 0 Permission Toggle replaced with a Native one).
+ * 14. Disable Frequency/Thermal Functionality (only 1 Throttle Point is available now). 
+ * 15. Remove Temperature Step Functionality.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -42,25 +44,15 @@
 #include <linux/of.h>
 
 // Temp Threshold is the LOWEST Level to Start Throttling.
-#define _temp_threshold		55
+#define _temp_threshold		60
 
-// Temperature Step (manages the GAPs between Different Thermal Throttle Points).
-#define _temp_step		5
+int TEMP_THRESHOLD 		= _temp_threshold;
 
-int TEMP_THRESHOLD 	= _temp_threshold;
-int TEMP_STEP 		= _temp_step;
-int LEVEL_HOT 		= _temp_threshold + _temp_step;
-
-#if (NR_CPUS == 4)
-    int FREQ_HOT		= 800000;
-    int FREQ_WARM		= 1094400;
-#elif (NR_CPUS == 6 || NR_CPUS == 8)
+#if (NR_CPUS == 4 || NR_CPUS == 6 || NR_CPUS == 8)
       #ifdef CONFIG_ARCH_MSM8916
-	     int FREQ_HOT 	= 800000;
-             int FREQ_WARM 	= 1113600;
+             int FREQ_WARM 	= 800000;
       #else
-	   int FREQ_HOT 	= 864000;
-	   int FREQ_WARM 	= 1248000;
+	   int FREQ_WARM 	= 864000;
       #endif
 #endif
 
@@ -83,13 +75,9 @@ static int set_temp_threshold(const char *val, const struct kernel_param *kp)
 	int i;
 
 	ret = kstrtouint(val, 10, &i);
-	if (ret)
+	if (ret || i < 40 || i > 90)
 	   return -EINVAL;
-	if (i < 40 || i > 90)
-	   return -EINVAL;
-	
-	LEVEL_HOT      = i + TEMP_STEP;
-	
+
 	ret = param_set_int(val, kp);
 
 	return ret;
@@ -102,33 +90,6 @@ static struct kernel_param_ops temp_threshold_ops = {
 
 module_param_cb(temp_threshold, &temp_threshold_ops, &TEMP_THRESHOLD, 0644);
 
-/* Temperature Step Storage */
-static int set_temp_step(const char *val, const struct kernel_param *kp)
-{
-	int ret = 0;
-	int i;
-
-	ret = kstrtouint(val, 10, &i);
-	if (ret)
-	   return -EINVAL;
-	// Restrict the Values to 1-6 for the Purpose of Safety.
-	if (i < 1 || i > 6)
-	   return -EINVAL;
-	
-	LEVEL_HOT = TEMP_THRESHOLD + i;
-	
-	ret = param_set_int(val, kp);
-
-	return ret;
-}
-
-static struct kernel_param_ops temp_step_ops = {
-	.set = set_temp_step,
-	.get = param_get_int,
-};
-
-module_param_cb(temp_step, &temp_step_ops, &TEMP_STEP, 0644);
-
 /* Frequency Limit Storage */
 static int set_freq_limit(const char *val, const struct kernel_param *kp)
 {
@@ -139,8 +100,8 @@ static int set_freq_limit(const char *val, const struct kernel_param *kp)
 	
 	ret = kstrtouint(val, 10, &i);
 
-	if (ret)
-	   return -EINVAL;
+	// Disable Frequency/Thermal Table Functionality.
+	return -EINVAL;
 
         policy = cpufreq_cpu_get(0);
 	tbl = cpufreq_frequency_get_table(0);
@@ -155,7 +116,6 @@ static struct kernel_param_ops freq_limit_ops = {
 	.get = param_get_int,
 };
 
-module_param_cb(freq_hot, &freq_limit_ops, &FREQ_HOT, 0644);
 module_param_cb(freq_warm, &freq_limit_ops, &FREQ_WARM, 0644);
 
 static struct thermal_info {
@@ -407,10 +367,8 @@ static void __ref check_temp(struct work_struct *work)
 	   }
 	}
 
-	if (temp >= LEVEL_HOT)
-		freq = FREQ_HOT;
-	else if (temp > TEMP_THRESHOLD)
-		freq = FREQ_WARM;
+	if (temp > TEMP_THRESHOLD)
+	   freq = FREQ_WARM;
 
 	if (freq) 
         {
