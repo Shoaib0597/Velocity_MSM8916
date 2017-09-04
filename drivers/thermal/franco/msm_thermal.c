@@ -15,6 +15,7 @@
  * 9. Updated Shoaib's Core Control to v2.0 with Improvements and BUG-Fixes as well as Support for Hexa-Core big.LITTLE SoCs.
  * 10. Altered the Formatting of the Codes (looks cleaner and more beautiful now).
  * 11. Updated Shoaib's Core Control to v2.1 (AiO HotPlug's Dependency Removed).
+ * 12. Updated Shoaib's Core Control to v2.2 (All Checks Removed for Thermal Table). 
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -72,10 +73,6 @@ static struct kobject *cc_kobj;
 // Permission to Disable Core 0 Toggle.
 extern bool hotplug_boost;
 #endif
-
-// Variables to know the user-behaviour.
-int flag = 0;
-int count = 0;
 
 /* Temperature Threshold Storage */
 static int set_temp_threshold(const char *val, const struct kernel_param *kp)
@@ -140,17 +137,13 @@ static int set_freq_limit(const char *val, const struct kernel_param *kp)
 	
 	ret = kstrtouint(val, 10, &i);
 
-	// Don't store any values if permission to disable Core 0 has been granted once on a big.LITTLE SoC to avoid the situation where the whole system freezes. To again use this function, the phone must be rebooted.
-	if (ret || count == 1)
+	if (ret)
 	   return -EINVAL;
 
         policy = cpufreq_cpu_get(0);
 	tbl = cpufreq_frequency_get_table(0);
 
 	ret = param_set_int(val, kp);
-
-	// Set flag to 1 if Thermal Frequency Table have been changed by user.
-	flag = 1;
 
 	return ret;
 }
@@ -228,16 +221,6 @@ static void __ref check_temp(struct work_struct *work)
 	tsens_dev.sensor_num = msm_thermal_info.sensor_id;
 	tsens_get_temp(&tsens_dev, &temp);
 
-	#if (NR_CPUS == 6 || NR_CPUS == 8)
-	// Switch on Core 0 again as soon as Permission to disable it is denied.
-	if (!cpu_online(0))
-	{
-	   count = 1;
-	   if (hotplug_boost == false)
-	      cpu_up(0);
-	}
-	#endif
-
 	#ifdef CONFIG_CORE_CONTROL
 	// Begin HotPlug Mechanism for Shoaib's Core Control
 	if (core_control)
@@ -289,8 +272,8 @@ static void __ref check_temp(struct work_struct *work)
 
 	            if (cpu_online(1))
 	               cpu_down(1);
-	            // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
-	            if (hotplug_boost == true && flag == 0)
+	            // Disable Core 0 only if Permission is Granted.
+	            if (hotplug_boost == true)
 		    {
 	               if (cpu_online(0))
 	                  cpu_down(0);
@@ -313,8 +296,8 @@ static void __ref check_temp(struct work_struct *work)
 		      
 		      if (cpu_online(1))
 	                 cpu_down(1);
-	              // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
-	              if (hotplug_boost == true && flag == 0)
+	              // Disable Core 0 only if Permission is Granted.
+	              if (hotplug_boost == true)
 		      {
 	                 if (cpu_online(0))
 	                    cpu_down(0);
@@ -337,8 +320,8 @@ static void __ref check_temp(struct work_struct *work)
 	               cpu_down(2);
 	            if (cpu_online(1))
 	               cpu_down(1);
-		    // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
-	            if (hotplug_boost == true && flag == 0)
+		    // Disable Core 0 only if Permission is Granted.
+	            if (hotplug_boost == true)
 		    {
 	               if (cpu_online(0))
 	                  cpu_down(0);
@@ -361,8 +344,8 @@ static void __ref check_temp(struct work_struct *work)
 	                    cpu_down(2);
 		         if (cpu_online(1))
 	                    cpu_down(1);
-		         // Disable Core 0 only if Permission is granted and Thermal Frequency Table has not been changed by user.
-		         if (hotplug_boost == true && flag == 0)
+		         // Disable Core 0 only if Permission is Granted.
+		         if (hotplug_boost == true)
 		         {
 	                 if (cpu_online(0))
 	                    cpu_down(0);
