@@ -41,6 +41,8 @@ static int Charging_Type;
 static int Toggle_Mirror = 0;
 // Variable to Check when Charging-Profile is Changed.
 static int CP_Mirror = 1;
+// Variable to Store a Copy of Max. Current (mA) as Defined in DT.
+static int DT_Current;
 #endif
 
 struct bq24157_chip {
@@ -1253,10 +1255,10 @@ static int bq24157_get_prop_batt_capa(struct bq24157_chip *chip)
 	   {
 	      if (chip->batt_capa == 60 || chip->batt_capa == 90 || Toggle_Mirror != QC_Toggle || CP_Mirror != Charging_Profile)
 	      {
-	         // If USB-Charging is Going On, Set Current-Limit to 1000 mA.
+	         // If USB-Charging is Going On, Set Current-Limit as per DT.
 	         if (Charging_Type == 0)
 	         {
-		    chip->set_ivbus_max = 1000;
+		    chip->set_ivbus_max = DT_Current;
 		    chip->chg_curr_max = chip->set_ivbus_max; 
 		    chip->chg_curr_now = chip->chg_curr_max;   
 
@@ -1434,9 +1436,9 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 	         // If Current (mA) is Equal to 500 mA, then USB-Charger is Connected.
                  if ((prop.intval / 1000) == 500) 
 	         {
-	            // Set vBUS Current-Limit (mA) to 1000 mA.
-                    pr_info("Using Quick Charge USB-Current (mA) %d", 1000);
-                    chip->set_ivbus_max = 1000;
+	            // Set vBUS Current-Limit (mA) as per DT.
+                    pr_info("Using Quick Charge USB-Current (mA) %d", DT_Current);
+                    chip->set_ivbus_max = DT_Current;
 		    // Store USB-Current (mA) Value Correctly.
 		    chip->chg_curr_max = chip->set_ivbus_max;
 		    chip->chg_curr_now = chip->chg_curr_max;
@@ -1472,10 +1474,10 @@ static void bq24157_external_power_changed(struct power_supply *psy)
 	 	  else
 		  {
 		      // If Flow of Control comes here, then AC-Charger is Connected.
-		      pr_info("Using Default AC-Current (mA) %d", 1000);
-		      // Set vBUS Current-Limit (mA) to Standard Value i.e., 1000 mA. 
-		      chip->set_ivbus_max = 1000;
-		      // Set Current (mA) to 1000 mA (as per DTB).    
+		      pr_info("Using Default AC-Current (mA) %d", DT_Current);
+		      // Set vBUS Current-Limit (mA) as per DT. 
+		      chip->set_ivbus_max = DT_Current;
+		      // Set Current (mA) as per DT.    
 		      chip->chg_curr_max = chip->set_ivbus_max;
 		      chip->chg_curr_now = chip->chg_curr_max;
 	  	      // Store Charging-Type i.e., 1 for AC.
@@ -1587,6 +1589,8 @@ static int bq24157_parse_dt(struct bq24157_chip *chip)
 	    rc = of_property_read_u32(node, "yl,max-charge-current-mA", &chip->chg_curr_max);
 	    if (rc < 0)
 	       return -EINVAL;
+	// Store a Copy of Max. Current (mA) as Defined in DT.
+	DT_Current = chip->chg_curr_max;
 	}
 #else
 	// If Quick Charge is not Compiled, then Read the Default Value only.
