@@ -32,17 +32,13 @@
  *
  */
 
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/mutex.h>
-#include <linux/msm_tsens.h>
-#include <linux/workqueue.h>
+#include <linux/of.h>
 #include <linux/cpu.h>
+#include <linux/module.h>
 #include <linux/cpufreq.h>
+#include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
 #include <linux/platform_device.h>
-#include <linux/of.h>
 
 // Temp Threshold is the LOWEST Level to Start Throttling.
 #define _temp_threshold		60
