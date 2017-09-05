@@ -384,7 +384,11 @@ static void __ref check_temp(struct work_struct *work)
 	}
 
 reschedule:
+	#ifdef CONFIG_WQ_POWER_EFFICIENT_DEFAULT
 	queue_delayed_work(system_power_efficient_wq, &check_temp_work, msecs_to_jiffies(1000));
+	#else
+	schedule_delayed_work_on(0, &check_temp_work, msecs_to_jiffies(1000));
+	#endif
 }
 
 #ifdef CONFIG_CORE_CONTROL
